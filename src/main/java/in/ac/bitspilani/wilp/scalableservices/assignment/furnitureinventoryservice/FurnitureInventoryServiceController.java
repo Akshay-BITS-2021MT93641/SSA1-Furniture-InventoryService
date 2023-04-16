@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import in.ac.bitspilani.wilp.scalableservices.assignment.furnitureinventoryservice.dao.CatalogInventoryRepository;
+import in.ac.bitspilani.wilp.scalableservices.assignment.furnitureinventoryservice.dao.FurnitureCatalogDao;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -21,6 +22,9 @@ public class FurnitureInventoryServiceController
     
     @Autowired
     private CatalogInventoryRepository catalogInventoryRepository;
+    
+    @Autowired
+    private FurnitureCatalogDao furnitureCatalogDao;
     
     @GetMapping("/getStock/{catalogItemId}")
     public Mono<CatalogInventory> getStock(@PathVariable UUID catalogItemId)
@@ -57,32 +61,38 @@ public class FurnitureInventoryServiceController
     private Mono<CatalogInventory> updateStock(UUID catalogItemId, String color, Integer stock)
     {
         return
-                catalogInventoryRepository.findOptionalByCatalogItemId(catalogItemId)
-                .switchIfEmpty(Mono.just(CatalogInventory.builder().catalogItemId(catalogItemId).build()))
-                .flatMap(inventoryRecord->{
+                furnitureCatalogDao.getCatalogItemId(catalogItemId)
+                .switchIfEmpty(Mono.error(()->new IllegalArgumentException("Catalog item id invalid. No catalog item exists with this id")))
+                .flatMap(catalogItemIdValid->{
                     
-                    Map<String, Integer> colorWiseStock = inventoryRecord.getColorWiseStock();
-                    if(Objects.isNull(colorWiseStock))
-                    {
-                        colorWiseStock = new LinkedHashMap<>();
-                        inventoryRecord.setColorWiseStock(colorWiseStock);
-                    }
-                    
-                    Integer existingStock = colorWiseStock.get(color);
-                    Integer updatedStock = stock;
-                    if(Objects.nonNull(existingStock)) 
-                    {
-                        updatedStock = existingStock.intValue() + stock.intValue();
-                    }
-                    
-                    if(updatedStock < 0) 
-                    {
-                        throw new IllegalArgumentException("Invalid stock number. Cannot remove more than existing stock");
-                    }
-                    
-                    colorWiseStock.put(color, updatedStock);
-                    
-                    return catalogInventoryRepository.save(inventoryRecord);
+                    return
+                            catalogInventoryRepository.findOptionalByCatalogItemId(catalogItemIdValid)
+                            .switchIfEmpty(Mono.just(CatalogInventory.builder().catalogItemId(catalogItemIdValid).build()))
+                            .flatMap(inventoryRecord->{
+                                
+                                Map<String, Integer> colorWiseStock = inventoryRecord.getColorWiseStock();
+                                if(Objects.isNull(colorWiseStock))
+                                {
+                                    colorWiseStock = new LinkedHashMap<>();
+                                    inventoryRecord.setColorWiseStock(colorWiseStock);
+                                }
+                                
+                                Integer existingStock = colorWiseStock.get(color);
+                                Integer updatedStock = stock;
+                                if(Objects.nonNull(existingStock)) 
+                                {
+                                    updatedStock = existingStock.intValue() + stock.intValue();
+                                }
+                                
+                                if(updatedStock < 0) 
+                                {
+                                    throw new IllegalArgumentException("Invalid stock number. Cannot remove more than existing stock");
+                                }
+                                
+                                colorWiseStock.put(color, updatedStock);
+                                
+                                return catalogInventoryRepository.save(inventoryRecord);
+                            });
                 });
     }
     
