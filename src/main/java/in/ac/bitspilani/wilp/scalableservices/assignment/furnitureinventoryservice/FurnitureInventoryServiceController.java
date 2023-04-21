@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,13 +27,13 @@ public class FurnitureInventoryServiceController
     @Autowired
     private FurnitureCatalogDao furnitureCatalogDao;
     
-    @GetMapping("/getStock/{catalogItemId}")
+    @GetMapping("/catalogItemsInventory/{catalogItemId}")
     public Mono<CatalogInventory> getStock(@PathVariable UUID catalogItemId)
     {
         return catalogInventoryRepository.findOptionalByCatalogItemId(catalogItemId);
     }
 
-    @PostMapping("/addStock/{catalogItemId}")
+    @PostMapping("/catalogItemsInventory/{catalogItemId}")
     public Mono<CatalogInventory> addStock(@PathVariable UUID catalogItemId, @RequestParam String color, @RequestParam Integer stock)
     {
         Objects.requireNonNull(catalogItemId);
@@ -45,7 +46,7 @@ public class FurnitureInventoryServiceController
         return updateStock(catalogItemId, color, stock);
     }
     
-    @PostMapping("/removeStock/{catalogItemId}")
+    @DeleteMapping("/catalogItemsInventory/{catalogItemId}")
     public Mono<CatalogInventory> removeStock(@PathVariable UUID catalogItemId, @RequestParam String color, @RequestParam Integer stock)
     {
         Objects.requireNonNull(catalogItemId);
